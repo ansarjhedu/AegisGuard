@@ -1,0 +1,220 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidDeviceSession(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.deviceModel is string && data.deviceModel.size() >= 1 && data.deviceModel.size() <= 120 &&
+             data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 80 &&
+             data.clientType is string && data.clientType.size() >= 1 && data.clientType.size() <= 120 &&
+             data.ipAddress is string && data.ipAddress.size() >= 1 && data.ipAddress.size() <= 64 &&
+             data.locationSource is string && data.locationSource.size() >= 1 && data.locationSource.size() <= 120 &&
+             data.userEmail is string && data.userEmail.size() >= 1 && data.userEmail.size() <= 200 &&
+             data.latitude is number && data.latitude >= -90.0 && data.latitude <= 90.0 &&
+             data.longitude is number && data.longitude >= -180.0 && data.longitude <= 180.0 &&
+             data.accuracyMeters is number && data.accuracyMeters >= 0.0 &&
+             data.locationAddress is string && data.locationAddress.size() >= 1 && data.locationAddress.size() <= 240 &&
+             data.batteryLevelPercent is int && data.batteryLevelPercent >= 0 && data.batteryLevelPercent <= 100 &&
+             data.charging is bool &&
+             data.online is bool &&
+             data.aegisGuardInstalled is bool &&
+             data.trackingMode is string && data.trackingMode in ['GOOGLE_LOCATION', 'AEGIS_DEVICE_TOKEN'] &&
+             (!('pairedToken' in data) || (data.pairedToken is string && data.pairedToken.size() >= 1 && data.pairedToken.size() <= 128)) &&
+             data.lockedRemotely is bool &&
+             data.signedOutRemotely is bool &&
+             data.networkCarrierOrWifi is string && data.networkCarrierOrWifi.size() >= 1 && data.networkCarrierOrWifi.size() <= 160 &&
+             data.lastSeenAtMillis is int && data.lastSeenAtMillis >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isHeartbeatOrTelemetryUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'deviceName',
+        'deviceModel',
+        'platform',
+        'clientType',
+        'ipAddress',
+        'locationSource',
+        'userEmail',
+        'latitude',
+        'longitude',
+        'accuracyMeters',
+        'locationAddress',
+        'batteryLevelPercent',
+        'charging',
+        'online',
+        'aegisGuardInstalled',
+        'trackingMode',
+        'pairedToken',
+        'networkCarrierOrWifi',
+        'lastSeenAtMillis',
+        'updatedAt'
+      ]);
+    }
+
+    function isRemoteSecurityActionUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'lockedRemotely',
+        'signedOutRemotely',
+        'online',
+        'lastSeenAtMillis',
+        'updatedAt'
+      ]);
+    }
+
+    match /users/{userId}/sessions/{sessionId} {
+      // Owner-isolated reads; list relies strictly on userId path wildcard without reading existing()
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(sessionId);
+
+      // Create requires all required fields and forbids unexpected ghost fields or @DocumentId 'id'
+      allow create: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'deviceName', 'deviceModel', 'platform', 'clientType',
+                         'ipAddress', 'locationSource', 'userEmail', 'latitude', 'longitude',
+                         'accuracyMeters', 'locationAddress', 'batteryLevelPercent', 'charging',
+                         'online', 'aegisGuardInstalled', 'trackingMode', 'lockedRemotely',
+                         'signedOutRemotely', 'networkCarrierOrWifi', 'lastSeenAtMillis',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'deviceName', 'deviceModel', 'platform', 'clientType',
+                         'ipAddress', 'locationSource', 'userEmail', 'latitude', 'longitude',
+                         'accuracyMeters', 'locationAddress', 'batteryLevelPercent', 'charging',
+                         'online', 'aegisGuardInstalled', 'trackingMode', 'pairedToken',
+                         'lockedRemotely', 'signedOutRemotely', 'networkCarrierOrWifi',
+                         'lastSeenAtMillis', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidDeviceSession(incoming(), userId);
+
+      // Update validates projected state first, enforces immutable userId/createdAt, and splits into explicit actions
+      allow update: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       isValidDeviceSession(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (isHeartbeatOrTelemetryUpdate() || isRemoteSecurityActionUpdate());
+
+      allow delete: if isOwner(userId) && isValidId(sessionId);
+    }
+
+    function isValidLocationHistory(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.deviceId is string && data.deviceId.size() >= 1 && data.deviceId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.locationAddress is string && data.locationAddress.size() >= 1 && data.locationAddress.size() <= 240 &&
+             data.locationSource is string && data.locationSource.size() >= 1 && data.locationSource.size() <= 120 &&
+             data.latitude is number && data.latitude >= -90.0 && data.latitude <= 90.0 &&
+             data.longitude is number && data.longitude >= -180.0 && data.longitude <= 180.0 &&
+             data.accuracyMeters is number && data.accuracyMeters >= 0.0 &&
+             data.recordedAtMillis is int && data.recordedAtMillis >= 0 &&
+             data.eventNote is string && data.eventNote.size() >= 1 && data.eventNote.size() <= 160 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId}/locationHistory/{entryId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(entryId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(entryId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'deviceId', 'deviceName', 'locationAddress',
+                         'locationSource', 'latitude', 'longitude', 'accuracyMeters',
+                         'recordedAtMillis', 'eventNote', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'deviceId', 'deviceName', 'locationAddress',
+                         'locationSource', 'latitude', 'longitude', 'accuracyMeters',
+                         'recordedAtMillis', 'eventNote', 'createdAt'
+                       ]) &&
+                       isValidLocationHistory(incoming(), userId);
+
+      allow update: if false;
+      allow delete: if isOwner(userId) && isValidId(entryId);
+    }
+
+    function isValidSessionLocationPoint(data, userId, sessionId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.sessionId is string &&
+             data.sessionId == sessionId &&
+             data.sessionId.size() >= 1 && data.sessionId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.latitude is number && data.latitude >= -90.0 && data.latitude <= 90.0 &&
+             data.longitude is number && data.longitude >= -180.0 && data.longitude <= 180.0 &&
+             data.accuracyMeters is number && data.accuracyMeters >= 0.0 &&
+             data.verticalAccuracyMeters is number && data.verticalAccuracyMeters >= 0.0 &&
+             data.speedMetersPerSec is number && data.speedMetersPerSec >= 0.0 &&
+             data.bearingDegrees is number && data.bearingDegrees >= 0.0 && data.bearingDegrees <= 360.0 &&
+             data.provider is string && data.provider.size() >= 1 && data.provider.size() <= 64 &&
+             data.locationAddress is string && data.locationAddress.size() >= 1 && data.locationAddress.size() <= 240 &&
+             data.capturedAtMillis is int && data.capturedAtMillis >= 0 &&
+             data.eventNote is string && data.eventNote.size() >= 1 && data.eventNote.size() <= 160 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId}/sessions/{sessionId}/locationPoints/{pointId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(sessionId) && isValidId(pointId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       isValidId(pointId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'sessionId', 'deviceName', 'latitude', 'longitude',
+                         'accuracyMeters', 'verticalAccuracyMeters', 'speedMetersPerSec',
+                         'bearingDegrees', 'provider', 'locationAddress',
+                         'capturedAtMillis', 'eventNote', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'sessionId', 'deviceName', 'latitude', 'longitude',
+                         'accuracyMeters', 'verticalAccuracyMeters', 'speedMetersPerSec',
+                         'bearingDegrees', 'provider', 'locationAddress',
+                         'capturedAtMillis', 'eventNote', 'createdAt'
+                       ]) &&
+                       isValidSessionLocationPoint(incoming(), userId, sessionId);
+
+      allow update: if false;
+      allow delete: if isOwner(userId) && isValidId(sessionId) && isValidId(pointId);
+    }
+  }
+}

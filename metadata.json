@@ -1,0 +1,6 @@
+{
+  "name": "AegisGuard",
+  "description": "Enterprise security app with real-time malware & hidden app detection, zero-trust network monitoring, decoy status bar camouflaging, location tamper alerts, and AES-256 encrypted auditing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

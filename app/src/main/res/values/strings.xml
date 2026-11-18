@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">AegisGuard</string>
+    <string name="tile_shield_name">Aegis Shield</string>
+    <string name="tile_lockdown_name">Anti-Theft Lock</string>
+    <string name="tile_camouflage_name">Decoy Camouflage</string>
+    <string name="tile_decoy_wifi_name">Internet</string>
+    <string name="tile_decoy_bluetooth_name">Bluetooth</string>
+    <string name="tile_decoy_mobile_data_name">Mobile Data</string>
+    <string name="tile_decoy_hotspot_name">Hotspot</string>
+    <string name="tile_decoy_location_name">Location</string>
+    <string name="tile_decoy_airplane_mode_name">Airplane Mode</string>
+</resources>

@@ -1,0 +1,257 @@
+{
+  "entities": {
+    "ActiveDeviceSession": {
+      "title": "ActiveDeviceSession",
+      "description": "Represents an authenticated user's active device login session synchronized across devices via Firebase Firestore.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user owning this session."
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Display name of the device (e.g., Pixel 8, Home Desktop PC)."
+        },
+        "deviceModel": {
+          "type": "string",
+          "description": "Hardware or OS model identifier."
+        },
+        "platform": {
+          "type": "string",
+          "description": "Operating system / platform (e.g., Android 15, Windows 11, macOS)."
+        },
+        "clientType": {
+          "type": "string",
+          "description": "Client application or browser holding the session."
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "Observed LAN or WAN IP address of the device session."
+        },
+        "locationSource": {
+          "type": "string",
+          "description": "Source used to resolve device coordinates and city."
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Authenticated Google / Gmail account address."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude coordinate of the session."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude coordinate of the session."
+        },
+        "accuracyMeters": {
+          "type": "number",
+          "description": "Estimated location accuracy in meters."
+        },
+        "locationAddress": {
+          "type": "string",
+          "description": "Human-readable city/country location of the session."
+        },
+        "batteryLevelPercent": {
+          "type": "integer",
+          "description": "Battery charge percentage (0-100)."
+        },
+        "charging": {
+          "type": "boolean",
+          "description": "Whether the device is currently charging or AC powered."
+        },
+        "online": {
+          "type": "boolean",
+          "description": "Whether the session is currently active/online."
+        },
+        "aegisGuardInstalled": {
+          "type": "boolean",
+          "description": "Whether the AegisGuard app is running on this device."
+        },
+        "trackingMode": {
+          "type": "string",
+          "enum": ["GOOGLE_LOCATION", "AEGIS_DEVICE_TOKEN"],
+          "description": "Tracking protocol used for the session."
+        },
+        "pairedToken": {
+          "type": "string",
+          "description": "Optional AegisGuard P2P cryptographic pairing token."
+        },
+        "lockedRemotely": {
+          "type": "boolean",
+          "description": "Whether remote anti-theft lockdown has been triggered for this session."
+        },
+        "signedOutRemotely": {
+          "type": "boolean",
+          "description": "Whether this device session has been remotely terminated."
+        },
+        "networkCarrierOrWifi": {
+          "type": "string",
+          "description": "Active network interface, Wi-Fi, or WAN link label."
+        },
+        "lastSeenAtMillis": {
+          "type": "integer",
+          "description": "Last local heartbeat timestamp in epoch milliseconds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp; clients must submit FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp; clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "deviceName",
+        "deviceModel",
+        "platform",
+        "clientType",
+        "ipAddress",
+        "locationSource",
+        "userEmail",
+        "latitude",
+        "longitude",
+        "accuracyMeters",
+        "locationAddress",
+        "batteryLevelPercent",
+        "charging",
+        "online",
+        "aegisGuardInstalled",
+        "trackingMode",
+        "lockedRemotely",
+        "signedOutRemotely",
+        "networkCarrierOrWifi",
+        "lastSeenAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DeviceLocationHistory": {
+      "title": "DeviceLocationHistory",
+      "description": "Immutable per-device location check-in record stored under the authenticated user's locationHistory subcollection.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner."
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Session or node identifier of the device."
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Human-readable name of the tracked device."
+        },
+        "locationAddress": {
+          "type": "string",
+          "description": "Resolved neighborhood, city, and country address."
+        },
+        "locationSource": {
+          "type": "string",
+          "description": "Telemetry method used (GPS, IP Geolocation, Timezone, Per-Device Calibration)."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude coordinate at check-in."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude coordinate at check-in."
+        },
+        "accuracyMeters": {
+          "type": "number",
+          "description": "Estimated horizontal accuracy in meters."
+        },
+        "recordedAtMillis": {
+          "type": "integer",
+          "description": "Client check-in timestamp in epoch milliseconds."
+        },
+        "eventNote": {
+          "type": "string",
+          "description": "Short description of why this checkpoint was logged."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp; clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "deviceId",
+        "deviceName",
+        "locationAddress",
+        "locationSource",
+        "latitude",
+        "longitude",
+        "accuracyMeters",
+        "recordedAtMillis",
+        "eventNote",
+        "createdAt"
+      ]
+    },
+    "SessionLocationPoint": {
+      "title": "SessionLocationPoint",
+      "description": "Per-session geocoordinate fix with timestamp and horizontal/vertical accuracy metadata stored under each active session.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID owning this session." },
+        "sessionId": { "type": "string", "description": "Session document ID this coordinate fix belongs to." },
+        "deviceName": { "type": "string", "description": "Human-readable device label for this session." },
+        "latitude": { "type": "number", "description": "Latitude geocoordinate (-90..90)." },
+        "longitude": { "type": "number", "description": "Longitude geocoordinate (-180..180)." },
+        "accuracyMeters": { "type": "number", "description": "Horizontal accuracy radius in meters." },
+        "verticalAccuracyMeters": { "type": "number", "description": "Vertical altitude accuracy in meters." },
+        "speedMetersPerSec": { "type": "number", "description": "Instantaneous speed in meters/second." },
+        "bearingDegrees": { "type": "number", "description": "Compass bearing in degrees (0..360)." },
+        "provider": { "type": "string", "description": "Location provider (fused_gps, network, per_device_calibration, ip_geolocation)." },
+        "locationAddress": { "type": "string", "description": "Resolved neighborhood, city, and country label." },
+        "capturedAtMillis": { "type": "integer", "description": "Capture epoch timestamp in milliseconds." },
+        "eventNote": { "type": "string", "description": "Audit note explaining trigger for this coordinate fix." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp." }
+      },
+      "required": [
+        "userId",
+        "sessionId",
+        "deviceName",
+        "latitude",
+        "longitude",
+        "accuracyMeters",
+        "verticalAccuracyMeters",
+        "speedMetersPerSec",
+        "bearingDegrees",
+        "provider",
+        "locationAddress",
+        "capturedAtMillis",
+        "eventNote",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/ActiveDeviceSession"
+      },
+      "description": "User-scoped active login sessions across mobile and desktop devices synced via Firebase Session Manager."
+    },
+    "/users/{userId}/sessions/{sessionId}/locationPoints/{pointId}": {
+      "schema": {
+        "$ref": "#/entities/SessionLocationPoint"
+      },
+      "description": "Per-session geocoordinate fixes with specific capture timestamps and accuracy metadata."
+    },
+    "/users/{userId}/locationHistory/{entryId}": {
+      "schema": {
+        "$ref": "#/entities/DeviceLocationHistory"
+      },
+      "description": "User-scoped immutable timeline of per-device location check-ins and calibrations."
+    }
+  }
+}
